@@ -70,12 +70,53 @@ func main() {
 	ctx := printer.NewContext(context.Background(), p)
 
 	flags := &commands.Flags{}
+	parseFlags := &commands.ParseFlags{}
 
 	app := &cli.Command{
-		Name:    "mdparse",
-		Usage:   `A Markdown to JSON and JSON to markdown converter. Intended for usage with scripting.`,
-		Version: build(),
+		Name:  "mdparse",
+		Usage: "Bidirectional converter between Markdown (with YAML frontmatter) and JSON",
+		Description: `mdparse automatically detects input format and converts bidirectionally:
+  • Markdown with YAML frontmatter → JSON
+  • JSON → Markdown with YAML frontmatter
+
+Designed for scripting and pipeline workflows.
+
+Input can be provided via:
+  - stdin (default if no argument provided)
+  - file path (e.g., document.md or data.json)
+  - literal content (markdown or JSON string)
+
+Examples:
+  # Markdown to JSON from stdin
+  echo "# Hello" | mdparse
+
+  # Markdown file to JSON with pretty printing
+  mdparse document.md --pretty
+
+  # JSON to markdown (round-trip)
+  mdparse document.md | mdparse
+
+  # Custom body property name
+  mdparse --body-key content document.md
+
+  # Literal markdown to JSON
+  mdparse "# Title"`,
+		ArgsUsage: "[file-or-content]",
+		Version:   build(),
 		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "body-key",
+				Aliases:     []string{"b"},
+				Usage:       "JSON property name for markdown body content",
+				Value:       "$body",
+				Destination: &parseFlags.BodyKey,
+			},
+			&cli.BoolFlag{
+				Name:        "pretty",
+				Aliases:     []string{"p"},
+				Usage:       "pretty-print JSON output with indentation",
+				Destination: &parseFlags.Pretty,
+			},
 			&cli.StringFlag{
 				Name:        "log-level",
 				Usage:       "log level (debug, info, warn, error, fatal, panic)",
@@ -97,8 +138,8 @@ func main() {
 
 			return ctx, nil
 		},
+		Action: commands.NewParseCmd(flags, parseFlags).Run,
 	}
-	app = commands.NewParseCmd(flags).Register(app)
 
 	exitCode := 0
 	if err := app.Run(ctx, os.Args); err != nil {

@@ -51,5 +51,6 @@ tasks:
     desc: Runs all go test and lint related tasks for PRs
     cmds:
       - task: tidy
+      - task: fmt
       - task: lint
       - task: test
